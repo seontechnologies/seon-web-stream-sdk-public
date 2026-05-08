@@ -7,7 +7,8 @@ The SEON Web Stream SDK continuously collects behavioral signals from your web a
 - A build system with ES2023 support (for external dependency resolution and optional polyfills). Example setup: Vite 6+ with SWC 1.8+ and core-js 3.25+.
 - A browser with native [BigInt](https://caniuse.com/bigint) support (Chrome 67+, Firefox 68+, Safari 14+, Edge 79+).
 - `localStorage` enabled (used for stream persistence).
-- An API key issued by SEON. Contact your SEON account representative to obtain one.
+
+An API token issued by SEON is required. Contact your SEON account representative to obtain one.
 
 ## Installation
 
@@ -17,7 +18,17 @@ npm install @seontechnologies/seon-stream-sdk-web
 bun add @seontechnologies/seon-stream-sdk-web
 ```
 
-Other package managers that support npm registries will also work. The SDK declares its runtime libraries as peer dependencies; modern package managers (npm 7+, bun, pnpm 8+) install them automatically.
+Other package managers that support npm registries will also work. Modern ones (npm 7+, bun, pnpm 8+) automatically install the SDK's runtime peer dependencies. We declare identity sensitive packages (eg. `rxjs`, `zod`) as peer dependencies so they share a single instance between your app and the SDK, avoiding bugs from having duplicate copies in the dependency tree.
+
+Dependency version ranges are intentionally pinned to specific minor versions (e.g. `~7.8.2`). We bump these versions in regular SDK releases as newer versions get validated by our tests. If this conflicts with another library in your project, you can manually override the resolved version via your package manager's `overrides` (npm/bun) or `resolutions` (yarn) field:
+
+```json
+{
+  "overrides": {
+    "rxjs": "7.7.0"
+  }
+}
+```
 
 Then import the SDK in your application:
 
@@ -29,23 +40,32 @@ import SeonStream from "@seontechnologies/seon-stream-sdk-web";
 
 ### Configuration
 
-The SDK accepts an optional configuration object at construction time. All options have sensible defaults except `apiKey`, which must be set before starting a stream.
+The SDK accepts an optional configuration object at construction time. All options have sensible defaults except `token`, which must be set before starting a stream.
 
 | Option                        | Type      | Default                                                                    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ----------------------------- | --------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apiKey`                      | `string`  | `''`                                                                       | The API key issued by SEON. Must be set before calling `startStream()`.                                                                                                                                                                                                                                                                                                                                                                                       |
+| `token`                       | `string`  | `''`                                                                       | The API token issued by SEON. Must be set before calling `startStream()`.                                                                                                                                                                                                                                                                                                                                                                                     |
 | `sessionTimeoutMs`            | `number`  | `0`                                                                        | The maximum time (in ms) between the last recorded event and a new `startStream()` call for the SDK to continue the previous stream with the same stream ID. When a stream is continued, the existing event history is preserved and new events are appended to it. If the elapsed time exceeds this value, or if the label has changed, a new stream ID is generated. Set to `0` to always start a fresh stream. Maximum value is 48 hours (172,800,000 ms). |
 | `enableLeaveDialog`           | `boolean` | `false`                                                                    | When `true`, the browser displays a confirmation dialog when the user navigates away or attempts to refresh/close the tab, ensuring the SDK has enough time to send the latest interaction data. Not recommended in non-SPA apps with navigation.                                                                                                                                                                                                             |
 | `silentMode`                  | `boolean` | `true`                                                                     | When `false`, the SDK enables open port scanning, which may generate several error logs in the console.                                                                                                                                                                                                                                                                                                                                                       |
 | `elementTagKey`               | `string`  | `'x-stream-tag'`                                                           | The HTML attribute name used for declarative element tagging (see [Tagging](#tagging)).                                                                                                                                                                                                                                                                                                                                                                       |
-| `apiEndpoint`                 | `string`  | `'https://session-monitoring.eu-west-1-main.usersession.io/api/v1/events'` | The endpoint path to which stream data is sent.                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `apiEndpoint`                 | `string`  | `'https://session-monitoring.eu-west-1-main.usersession.io/api/v1/events'` | The API endpoint where stream data is sent to.                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `storageKey`                  | `string`  | `'x_stream'`                                                               | The `localStorage` key prefix used for stream persistence.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `eventBufferKeyPostfix`       | `string`  | `'eb'`                                                                     | Postfix appended to `storageKey` to form the `localStorage` key for the user events (e.g. `'x_stream_eb'`).                                                                                                                                                                                                                                                                                                                                                   |
 | `aggregationBufferKeyPostfix` | `string`  | `'ab'`                                                                     | Postfix appended to `storageKey` to form the `localStorage` key for the user aggregated data (e.g. `'x_stream_ab'`).                                                                                                                                                                                                                                                                                                                                          |
 | `resolverDomain`              | `string`  | `'seonintelligenceresolver.com'`                                           | The domain used for network intelligence resolver requests.                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `resolverEndpointTl`          | `string`  | `'eb6a7d55b667d9b6e52e2ebe363274d7b395eb78'`                               | The subdomain identifier for the resolver endpoint. Combined with `resolverDomain` they form the full URL.                                                                                                                                                                                                                                                                                                                                                    |
+| ~~`apiKey`~~                  | `string`  | —                                                                          | **Deprecated.** Use `token` instead. Accepted as a backwards compatible alias. When both are supplied, `token` takes precedence.                                                                                                                                                                                                                                                                                                                              |
 
 Configuration values are validated on input. Any properties that fail validation are not applied and are returned to the caller (see [Updating configuration](#updating-configuration)).
+
+### API Endpoints
+
+Set the `apiEndpoint` config parameter to configure the endpoint where the SDK will stream behavior data to. You can also use your own backend as a first party reverse proxy to SEON (eg. in an event where Adblocking becomes an issue), just make sure to forward every header and relay every request/response exactly as is. Network intelligence requests cannot be proxied as they need to originate from the client.
+
+EU: `https://session-monitoring.eu-west-1-main.usersession.io/api/v1/events`
+
+> At the time of reading there may be more SEON endpoints, just pick whichever is closest to your users or where your account is based at.
 
 ### Initialization
 
@@ -53,7 +73,7 @@ Create a single SDK instance — the constructor enforces the singleton pattern.
 
 ```js
 const seonStream = new SeonStream({
-  apiKey: "YOUR_API_KEY",
+  token: "YOUR_API_TOKEN",
   sessionTimeoutMs: 60_000,
   enableLeaveDialog: true,
   silentMode: false,
