@@ -8,8 +8,6 @@ The SEON Web Stream SDK continuously collects behavioral signals from your web a
 - A browser with native [BigInt](https://caniuse.com/bigint) support (Chrome 67+, Firefox 68+, Safari 14+, Edge 79+).
 - `localStorage` enabled (used for stream persistence).
 
-An API token issued by SEON is required. Contact your SEON account representative to obtain one.
-
 ## Installation
 
 ```bash
@@ -40,32 +38,78 @@ import SeonStream from "@seontechnologies/seon-stream-sdk-web";
 
 ### Configuration
 
-The SDK accepts an optional configuration object at construction time. All options have sensible defaults except `token`, which must be set before starting a stream.
+The SDK accepts an optional configuration object at construction time. All options have sensible defaults except `authData`, which must be set before starting a stream.
 
-| Option                        | Type      | Default                                                                    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------- | --------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `token`                       | `string`  | `''`                                                                       | The API token issued by SEON. Must be set before calling `startStream()`.                                                                                                                                                                                                                                                                                                                                                                                     |
-| `sessionTimeoutMs`            | `number`  | `0`                                                                        | The maximum time (in ms) between the last recorded event and a new `startStream()` call for the SDK to continue the previous stream with the same stream ID. When a stream is continued, the existing event history is preserved and new events are appended to it. If the elapsed time exceeds this value, or if the label has changed, a new stream ID is generated. Set to `0` to always start a fresh stream. Maximum value is 48 hours (172,800,000 ms). |
-| `enableLeaveDialog`           | `boolean` | `false`                                                                    | When `true`, the browser displays a confirmation dialog when the user navigates away or attempts to refresh/close the tab, ensuring the SDK has enough time to send the latest interaction data. Not recommended in non-SPA apps with navigation.                                                                                                                                                                                                             |
-| `silentMode`                  | `boolean` | `true`                                                                     | When `false`, the SDK enables open port scanning, which may generate several error logs in the console.                                                                                                                                                                                                                                                                                                                                                       |
-| `elementTagKey`               | `string`  | `'x-stream-tag'`                                                           | The HTML attribute name used for declarative element tagging (see [Tagging](#tagging)).                                                                                                                                                                                                                                                                                                                                                                       |
-| `apiEndpoint`                 | `string`  | `'https://session-monitoring.eu-west-1-main.usersession.io/api/v1/events'` | The API endpoint where stream data is sent to.                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `storageKey`                  | `string`  | `'x_stream'`                                                               | The `localStorage` key prefix used for stream persistence.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `eventBufferKeyPostfix`       | `string`  | `'eb'`                                                                     | Postfix appended to `storageKey` to form the `localStorage` key for the user events (e.g. `'x_stream_eb'`).                                                                                                                                                                                                                                                                                                                                                   |
-| `aggregationBufferKeyPostfix` | `string`  | `'ab'`                                                                     | Postfix appended to `storageKey` to form the `localStorage` key for the user aggregated data (e.g. `'x_stream_ab'`).                                                                                                                                                                                                                                                                                                                                          |
-| `resolverDomain`              | `string`  | `'seonintelligenceresolver.com'`                                           | The domain used for network intelligence resolver requests.                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `resolverEndpointTl`          | `string`  | `'eb6a7d55b667d9b6e52e2ebe363274d7b395eb78'`                               | The subdomain identifier for the resolver endpoint. Combined with `resolverDomain` they form the full URL.                                                                                                                                                                                                                                                                                                                                                    |
-| ~~`apiKey`~~                  | `string`  | —                                                                          | **Deprecated.** Use `token` instead. Accepted as a backwards compatible alias. When both are supplied, `token` takes precedence.                                                                                                                                                                                                                                                                                                                              |
+| Option                        | Type      | Default                                      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | --------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authData`                    | `string`  | `undefined`                                  | The Base64 auth blob your backend obtains from SEON's auth endpoint. The SDK decodes it into a JWT token, ingest domains and additional configuration. Must be set via the constructor or `setConfig()` before calling `startStream()`. See [Authentication](#authentication).                                                                                                                                                                                |
+| `sessionTimeoutMs`            | `number`  | `0`                                          | The maximum time (in ms) between the last recorded event and a new `startStream()` call for the SDK to continue the previous stream with the same stream ID. When a stream is continued, the existing event history is preserved and new events are appended to it. If the elapsed time exceeds this value, or if the label has changed, a new stream ID is generated. Set to `0` to always start a fresh stream. Maximum value is 48 hours (172,800,000 ms). |
+| `enableLeaveDialog`           | `boolean` | `false`                                      | When `true`, the browser displays a confirmation dialog when the user navigates away or attempts to refresh/close the tab, ensuring the SDK has enough time to send the latest interaction data. Not recommended in non-SPA apps with navigation.                                                                                                                                                                                                             |
+| `silentMode`                  | `boolean` | `true`                                       | When `false`, the SDK enables open port scanning, which may generate several error logs in the console.                                                                                                                                                                                                                                                                                                                                                       |
+| `elementTagKey`               | `string`  | `'x-stream-tag'`                             | The HTML attribute name used for declarative element tagging (see [Tagging](#tagging)).                                                                                                                                                                                                                                                                                                                                                                       |
+| `apiEndpoint`                 | `string`  | `undefined`                                  | Optional override of the ingest URL. When set, the SDK posts events there instead of selecting from the ingest domains in `authData`. Useful for routing through your own first-party reverse proxy. See [Proxying the ingest traffic](#proxying-the-ingest-traffic-optional).                                                                                                                                                                                |
+| `storageKey`                  | `string`  | `'x_stream'`                                 | The `localStorage` key prefix used for stream persistence.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `eventBufferKeyPostfix`       | `string`  | `'eb'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for the user events (e.g. `'x_stream_eb'`).                                                                                                                                                                                                                                                                                                                                                   |
+| `aggregationBufferKeyPostfix` | `string`  | `'ab'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for the user aggregated data (e.g. `'x_stream_ab'`).                                                                                                                                                                                                                                                                                                                                          |
+| `resolverDomain`              | `string`  | `'seonintelligenceresolver.com'`             | The domain used for network intelligence resolver requests.                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `resolverEndpointTl`          | `string`  | `'eb6a7d55b667d9b6e52e2ebe363274d7b395eb78'` | The subdomain identifier for the resolver endpoint. Combined with `resolverDomain` they form the full URL.                                                                                                                                                                                                                                                                                                                                                    |
 
 Configuration values are validated on input. Any properties that fail validation are not applied and are returned to the caller (see [Updating configuration](#updating-configuration)).
 
-### API Endpoints
+### Authentication
 
-Set the `apiEndpoint` config parameter to configure the endpoint where the SDK will stream behavior data to. You can also use your own backend as a first party reverse proxy to SEON (eg. in an event where Adblocking becomes an issue), just make sure to forward every header and relay every request/response exactly as is. Network intelligence requests cannot be proxied as they need to originate from the client.
+The SDK authenticates with a short lived, server issued token that you need to get separately:
 
-EU: `https://session-monitoring.eu-west-1-main.usersession.io/api/v1/events`
+1. Your backend requests auth data from SEON's auth endpoint (server to server with your own SEON API key).
+2. Your app passes that blob to the SDK via the `authData` config property before starting a stream.
+3. The SDK decodes it into a JWT and the ingest domains.
 
-> At the time of reading there may be more SEON endpoints, just pick whichever is closest to your users or where your account is based at.
+Since the token is short lived, fetch a fresh one before every stream start using the endpoint for your account's region:
+
+| Region           | Endpoint                                                            |
+| ---------------- | ------------------------------------------------------------------- |
+| EU (Ireland)     | `https://api.seon.io/session-monitoring-api/v1/auth`                |
+| US (N. Virginia) | `https://api.us-east-1-main.seon.io/session-monitoring-api/v1/auth` |
+
+Example flow:
+
+```bash
+# 1. Your backend serves /auth for the client to call SEON's auth API.
+curl -X POST https://api.seon.io/session-monitoring-api/v1/auth \
+  -H "X-API-KEY: YOUR_SEON_API_KEY"
+```
+
+```js
+// 2. Your client fetches auth data from your backend.
+const authData = await fetch("/auth", { method: "POST" }).then((res) =>
+  res.text(),
+);
+
+// 3. Pass it to the SDK via the constructor…
+const seonStream = new SeonStream({ authData });
+// …or apply it to an existing instance.
+seonStream.setConfig({ authData });
+```
+
+#### Proxying the ingest traffic (optional)
+
+Set the `apiEndpoint` config property to route ingest through your own first party reverse proxy. The SDK then posts there instead of the domains from `authData`. Forward all requests and responses as is, and especially allow the `Authorization`, `Content-Type`, and `X-Client-Type` request headers and expose the `X-New-Token` response header for token rotation to work. Network intelligence requests cannot be proxied as they need to directly originate from the client.
+
+To get the upstream domains from the SDK, read `remoteConfig.domains` returned by `setConfig()` or the buffered `constructor` debug message. Using the first one is fine and expected but you could use the other domains as well. Declare the network protocol and append the appropriate route to construct the proper endpoint.
+
+```js
+const { remoteConfig } = seonStream.setConfig({});
+// OR
+seonStream.onDebug = (dbg) => {
+  if (dbg.message === "constructor") {
+    const { remoteConfig } = dbg.data.config;
+  }
+};
+
+const { domains } = remoteConfig;
+const domain = domains[0];
+const endpoint = `https://${domain}/api/v1/events`;
+```
 
 ### Initialization
 
@@ -73,7 +117,7 @@ Create a single SDK instance — the constructor enforces the singleton pattern.
 
 ```js
 const seonStream = new SeonStream({
-  token: "YOUR_API_TOKEN",
+  authData: authDataFromYourBackend,
   sessionTimeoutMs: 60_000,
   enableLeaveDialog: true,
   silentMode: false,
@@ -219,11 +263,11 @@ When a server-side timeout occurs, the SDK automatically calls `finishStream()` 
 
 ## Handling authentication errors
 
-If the server rejects a request with HTTP 401 (invalid API key), the SDK automatically calls `finishStream()` before invoking the `onAuthError` callback. This can happen if the key is misconfigured.
+If the server rejects a request with HTTP 401 (invalid or expired session token), the SDK automatically calls `finishStream()` before invoking the `onAuthError` callback. This typically means the `authData` was missing, malformed, or its session token has expired. Obtain a fresh `authData` blob from your backend, apply it with `setConfig({ authData })`, and start a new stream.
 
 ```js
 seonStream.onAuthError = () => {
-  /* Invalid API key. */
+  /* Invalid or expired session token. Re-authenticate with a fresh authData. */
 };
 ```
 
@@ -322,7 +366,7 @@ The SDK collects device and browser signals and streams them to the SEON platfor
 
 ## Common integration difficulties
 
-- **API key must be set before starting a stream.** If no API key has been provided (either through the constructor or `setConfig()`) before calling `startStream()`, requests will be rejected by the SEON backend.
+- **`authData` must be set before starting a stream.** If no `authData` has been provided before calling `startStream()`, the SDK has no session token and requests will be rejected by the SEON backend. Because `authData` is short-lived, fetch a fresh blob before every stream start.
 - **Late initialization.** The SDK begins tracking events only after `startStream()` is called. If you delay the stream start, early user interactions will not be captured. Initialize and start the stream as early as possible in your application lifecycle.
 - **Default `sessionTimeoutMs` is `0`.** With the default value, every `startStream()` call creates a new stream ID. If you want streams to survive page reloads or navigations (e.g. in a multi-page checkout flow), set `sessionTimeoutMs` to a positive value and pass the same `label` to each `startStream()` call.
 - **`enableLeaveDialog` is `false` by default.** Without this option, the last seconds of interaction data could be lost when the user abruptly closes the tab/browser or navigates away before the SDK's next transmission. When enabled, the browser displays a confirmation dialog on navigation/close, giving the SDK time to send the latest interaction data.
