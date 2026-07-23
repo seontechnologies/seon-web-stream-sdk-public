@@ -364,6 +364,14 @@ The SDK detects when the page goes to the background or foreground.
 
 The SDK collects device and browser signals and streams them to the SEON platform, where they are used to build real-time risk flags — for example, detecting proxy/VPN usage, browser spoofing, automation tools, or private browsing.
 
+## Content-Security-Policy (CSP)
+
+If your website uses Content Security Policy (CSP) headers, ensure that the following sources are allowed:
+
+- `connect-src *.usersession.io *.seonintelligenceresolver.com`
+
+> Note: In case the `*.usersession.io` domain is rotated, please update the CSP accordingly. Alternatively, proxy the ingest traffic as described in [Proxying the ingest traffic](#proxying-the-ingest-traffic-optional).
+
 ## Common integration difficulties
 
 - **`authData` must be set before starting a stream.** If no `authData` has been provided before calling `startStream()`, the SDK has no session token and requests will be rejected by the SEON backend. Because `authData` is short-lived, fetch a fresh blob before every stream start.
