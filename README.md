@@ -47,7 +47,6 @@ The SDK accepts an optional configuration object at construction time. All optio
 | `enableLeaveDialog`           | `boolean` | `false`                                      | When `true`, the browser displays a confirmation dialog when the user navigates away or attempts to refresh/close the tab, ensuring the SDK has enough time to send the latest interaction data. Not recommended in non-SPA apps with navigation.                                                                                                                                                                                                             |
 | `silentMode`                  | `boolean` | `true`                                       | When `false`, the SDK enables open port scanning, which may generate several error logs in the console.                                                                                                                                                                                                                                                                                                                                                       |
 | `elementTagKey`               | `string`  | `'x-stream-tag'`                             | The HTML attribute name used for declarative element tagging (see [Tagging](#tagging)).                                                                                                                                                                                                                                                                                                                                                                       |
-| `apiEndpoint`                 | `string`  | `undefined`                                  | Optional override of the ingest URL. When set, the SDK posts events there instead of selecting from the ingest domains in `authData`. Useful for routing through your own first-party reverse proxy. See [Proxying the ingest traffic](#proxying-the-ingest-traffic-optional).                                                                                                                                                                                |
 | `storageKey`                  | `string`  | `'x_stream'`                                 | The `localStorage` key prefix used for stream persistence.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `eventBufferKeyPostfix`       | `string`  | `'eb'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for the user events (e.g. `'x_stream_eb'`).                                                                                                                                                                                                                                                                                                                                                   |
 | `aggregationBufferKeyPostfix` | `string`  | `'ab'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for the user aggregated data (e.g. `'x_stream_ab'`).                                                                                                                                                                                                                                                                                                                                          |
@@ -89,26 +88,6 @@ const authData = await fetch("/auth", { method: "POST" }).then((res) =>
 const seonStream = new SeonStream({ authData });
 // …or apply it to an existing instance.
 seonStream.setConfig({ authData });
-```
-
-#### Proxying the ingest traffic (optional)
-
-Set the `apiEndpoint` config property to route ingest through your own first party reverse proxy. The SDK then posts there instead of the domains from `authData`. Forward all requests and responses as is, and especially allow the `Authorization`, `Content-Type`, and `X-Client-Type` request headers and expose the `X-New-Token` response header for token rotation to work. Network intelligence requests cannot be proxied as they need to directly originate from the client.
-
-To get the upstream domains from the SDK, read `remoteConfig.domains` returned by `setConfig()` or the buffered `constructor` debug message. Using the first one is fine and expected but you could use the other domains as well. Declare the network protocol and append the appropriate route to construct the proper endpoint.
-
-```js
-const { remoteConfig } = seonStream.setConfig({});
-// OR
-seonStream.onDebug = (dbg) => {
-  if (dbg.message === "constructor") {
-    const { remoteConfig } = dbg.data.config;
-  }
-};
-
-const { domains } = remoteConfig;
-const domain = domains[0];
-const endpoint = `https://${domain}/api/v1/events`;
 ```
 
 ### Initialization
@@ -370,7 +349,7 @@ If your website uses Content Security Policy (CSP) headers, ensure that the foll
 
 - `connect-src *.usersession.io *.seonintelligenceresolver.com`
 
-> Note: In case the `*.usersession.io` domain is rotated, please update the CSP accordingly. Alternatively, proxy the ingest traffic as described in [Proxying the ingest traffic](#proxying-the-ingest-traffic-optional).
+> Note: In case the `*.usersession.io` domain is rotated, please update the CSP accordingly.
 
 ## Common integration difficulties
 
