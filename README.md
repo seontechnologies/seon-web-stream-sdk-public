@@ -4,9 +4,11 @@ The SEON Web Stream SDK continuously collects behavioral signals from your web a
 
 ## Requirements
 
-- A build system with ES2023 support (for external dependency resolution and optional polyfills). Example setup: Vite 6+ with SWC 1.8+ and core-js 3.25+.
-- A browser with native [BigInt](https://caniuse.com/bigint) support (Chrome 67+, Firefox 68+, Safari 14+, Edge 79+).
+- A build system with ES2023 support.
+- A browser with native [BigInt](https://caniuse.com/bigint) support (Chrome 67+, Firefox 68+, Safari 14.1+, Edge 79+). †
 - `localStorage` enabled (used for stream persistence).
+
+† The package ships untranspiled [ES2023](https://caniuse.com/sr-es14) by default (Chrome 110+, Firefox 115+, Safari 16.4+, Edge 110+). To support browser versions below that, make sure your build transpiles and polyfills this package.
 
 ## Installation
 
