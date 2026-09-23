@@ -52,6 +52,7 @@ The SDK accepts an optional configuration object at construction time. All optio
 | `storageKey`                  | `string`  | `'x_stream'`                                 | The `localStorage` key prefix used for stream persistence.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `eventBufferKeyPostfix`       | `string`  | `'eb'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for the user events (e.g. `'x_stream_eb'`).                                                                                                                                                                                                                                                                                                                                                   |
 | `aggregationBufferKeyPostfix` | `string`  | `'ab'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for the user aggregated data (e.g. `'x_stream_ab'`).                                                                                                                                                                                                                                                                                                                                          |
+| `errorBufferKeyPostfix`       | `string`  | `'er'`                                       | Postfix appended to `storageKey` to form the `localStorage` key for SDK errors (e.g. `'x_stream_er'`).                                                                                                                                                                                                                                                                                                                                                        |
 | `resolverDomain`              | `string`  | `'seonintelligenceresolver.com'`             | The domain used for network intelligence resolver requests.                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `resolverEndpointTl`          | `string`  | `'eb6a7d55b667d9b6e52e2ebe363274d7b395eb78'` | The subdomain identifier for the resolver endpoint. Combined with `resolverDomain` they form the full URL.                                                                                                                                                                                                                                                                                                                                                    |
 
@@ -195,7 +196,7 @@ If the constraints are violated, then the `onError` callback gets invoked and th
 
 ## Handling SDK errors
 
-When the SDK encounters an error, it invokes the `onError` callback and continues. This callback can be used for in-house metrics, or to identify potential issues with the integration.
+When the SDK encounters an error, it invokes the `onError` callback and continues. This callback can be used for in-house metrics or to identify potential issues with the integration.
 
 ```ts
 seonStream.onError = (err: Error) => {
@@ -206,9 +207,30 @@ seonStream.onError = (err: Error) => {
 };
 ```
 
+## Handling SDK warnings
+
+The SDK emits optional warning messages which can be captured via the `onWarning` callback. These carry useful information about potentially misbehaving logic or unideal conditions.
+
+```ts
+seonStream.onWarning = (warning: Warning) => {
+  /* The warning message is contained within `warning`. */
+};
+```
+
+The `Warning` interface:
+
+```ts
+interface Warning {
+  scope: string;
+  message: string;
+  timestamp: string; // ISO format
+  data?: Record<string, any>;
+}
+```
+
 ## Handling SDK debug messages
 
-The SDK emits optional debug messages, which can be captured via the `onDebug` callback. This can be useful for validation or to identify misconfiguration.
+The SDK emits optional debug messages which can be captured via the `onDebug` callback. These can be useful for validation or to identify misconfiguration.
 
 ```ts
 seonStream.onDebug = (dbg: Debug) => {
@@ -360,8 +382,8 @@ If your website uses Content Security Policy (CSP) headers, ensure that the foll
 - **Default `sessionTimeoutMs` is `0`.** With the default value, every `startStream()` call creates a new stream ID. If you want streams to survive page reloads or navigations (e.g. in a multi-page checkout flow), set `sessionTimeoutMs` to a positive value and pass the same `label` to each `startStream()` call.
 - **`enableLeaveDialog` is `false` by default.** Without this option, the last seconds of interaction data could be lost when the user abruptly closes the tab/browser or navigates away before the SDK's next transmission. When enabled, the browser displays a confirmation dialog on navigation/close, giving the SDK time to send the latest interaction data.
 - **Tag elements early.** Tags are resolved at the time events fire. If you tag an element after the user has already interacted with it, those early events will be recorded with the auto-resolved name (e.g. from the `name` or `id` attribute) instead of your custom tag.
-- **`localStorage` must be available.** The SDK uses `localStorage` for stream persistence. If `localStorage` is blocked (e.g. by browser privacy settings or iframe sandboxing), stream restoration across page reloads will not work. The SDK bounds its persisted data to fit within the browser's `localStorage` quota (typically 5–10 MB per origin).
-- **Data buffering during network outages.** If the network is unavailable, the SDK buffers events in memory (up to 10,000 events, oldest evicted first) and retries transmission automatically. Buffered data is persisted to `localStorage` so it survives page reloads.
+- **`localStorage` must be available.** The SDK uses `localStorage` for stream persistence. If `localStorage` is blocked (e.g. by browser privacy settings or iframe sandboxing), stream restoration across page reloads will not work.
+- **Data buffering during network outages.** If the network is unavailable, the SDK buffers events in memory and retries transmission automatically. Buffered data is persisted to `localStorage` so it survives page reloads.
 
 ## Limitations and auto-tagging behaviour
 
